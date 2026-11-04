@@ -1,0 +1,920 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101b23">
+  <title>Traffic Flow Optimiser</title>
+  <style>
+    :root { color-scheme:dark; --ink:#e5eff2; --muted:#9aadb5; --line:#2d4049; --paper:#0b1217; --white:#142129; --teal:#41c4ac; --teal-soft:#183b35; --green:#5ed89a; --green-soft:#18382e; --amber:#efbd63; --red:#f17670; --dark:#101a21; --road:#34434b; --road-line:#d7bf70; --shadow:0 16px 40px #00000035; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--paper); color:var(--ink); font:15px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; }
+    button,input { font:inherit; }
+    button { cursor:pointer; }
+    .shell { max-width:1320px; margin:0 auto; padding:22px; }
+    .topbar { display:flex; align-items:center; justify-content:space-between; gap:20px; padding:16px 20px; border-radius:16px; background:var(--dark); color:#f4fbfb; box-shadow:var(--shadow); }
+    .brand { display:flex; align-items:center; gap:12px; font-weight:700; letter-spacing:-.02em; }
+    .brand-mark { display:grid; place-items:center; width:36px; height:36px; border-radius:11px; background:#d7f2e5; color:#126444; font-size:13px; font-weight:800; }
+    .brand small { display:block; color:#adc0c3; font-size:11px; font-weight:500; letter-spacing:.12em; text-transform:uppercase; }
+    .top-right { display:flex; align-items:center; gap:12px; color:#c2d0d1; font-size:12px; }
+    .status { display:inline-flex; align-items:center; gap:7px; padding:7px 10px; border:1px solid #40515a; border-radius:999px; }
+    .status-dot { width:8px; height:8px; border-radius:50%; background:#e5b456; }
+    .hero { display:flex; align-items:flex-end; justify-content:space-between; gap:16px; margin:28px 0 18px; }
+    .hero-copy { min-width:0; }
+    .hero-title-row { display:flex; align-items:center; flex-wrap:wrap; gap:12px; }
+    .hero-title-row h1 { margin:0; }
+    .help-button { min-height:34px; padding:0 12px; border:1px solid #347663; border-radius:8px; background:#183b33; color:#91e5bd; font-size:11px; font-weight:700; }
+    .help-button:hover { background:#205044; }
+    .help-button:focus-visible, .help-close:focus-visible { outline:2px solid #69d5ad; outline-offset:2px; }
+    .how-to-panel { margin:-3px 0 18px; padding:16px; border:1px solid #2b414a; border-radius:13px; background:#121d24; box-shadow:var(--shadow); }
+    .how-to-panel[hidden] { display:none; }
+    .how-to-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .how-to-head h2 { font-size:14px; }
+    .help-close { display:grid; width:30px; height:30px; place-items:center; border:1px solid #34464f; border-radius:7px; background:#19262d; color:var(--ink); font-size:18px; }
+    .how-to-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:9px; margin-top:12px; }
+    .how-to-step { padding:11px; border:1px solid #2a3c44; border-radius:9px; background:#17242b; }
+    .how-to-step b { display:block; margin-bottom:5px; color:#83dfb4; font-size:11px; }
+    .how-to-step p { margin:0; color:#b5c4c9; font-size:11px; }
+    .how-to-note { margin:11px 0 0; color:var(--muted); font-size:10px; }
+    h1 { margin:0 0 5px; font-size:27px; line-height:1.1; letter-spacing:-.04em; }
+    .subtitle { margin:0; color:var(--muted); font-size:13px; }
+    .junction-label { padding:8px 12px; border:1px solid var(--line); border-radius:9px; background:var(--white); color:var(--muted); font-size:12px; }
+    .layout { display:grid; grid-template-columns:minmax(0,1.22fr) minmax(340px,.78fr); gap:16px; align-items:start; }
+    .panel { min-width:0; padding:17px; border:1px solid var(--line); border-radius:15px; background:var(--white); box-shadow:var(--shadow); }
+    .panel-title { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; }
+    h2 { margin:0; font-size:15px; letter-spacing:-.015em; }
+    .eyebrow { color:var(--muted); font-size:11px; letter-spacing:.08em; text-transform:uppercase; }
+    .video-frame { position:relative; display:grid; min-height:250px; aspect-ratio:706/529; place-items:center; overflow:hidden; border-radius:11px; background:#1d2b33; }
+    video, .sample-image { display:none; width:100%; height:100%; max-height:480px; background:#101820; object-fit:contain; }
+    video.ready, .sample-image.ready { display:block; }
+    .junction-overlay { position:absolute; top:12px; right:12px; max-width:58%; padding:6px 9px; border:1px solid #587068; border-radius:7px; background:#0e1a20e8; color:#9de7c2; font-size:11px; text-align:right; }
+    .sim-signal-housing { fill:#10191d; stroke:#f0faf7; stroke-width:1.5; }
+    .sim-signal-red { fill:#743c3c; }
+    .sim-signal-amber { fill:#765d2c; }
+    .sim-signal-green { fill:#2c5e43; }
+    .sim-signal-red.active { fill:#ff615a; filter:drop-shadow(0 0 4px #ff615a); }
+    .sim-signal-amber.active { fill:#ffc44d; filter:drop-shadow(0 0 4px #ffc44d); }
+    .sim-signal-green.active { fill:#57e395; filter:drop-shadow(0 0 4px #57e395); }
+    .sim-signal-letter { fill:#f4fbf9; font:700 8px system-ui,sans-serif; text-anchor:middle; }
+    video.ready { display:block; }
+    .video-empty { max-width:360px; padding:24px; color:#c6d4d4; text-align:center; }
+    .video-empty strong { display:block; margin-bottom:6px; color:white; font-size:15px; }
+    .video-empty p { margin:0 0 16px; font-size:12px; }
+    .video-overlay { position:absolute; top:12px; left:12px; display:none; padding:6px 9px; border-radius:7px; background:#0e1a20d9; color:#e9f5f2; font-size:11px; }
+    .video-overlay.visible { display:block; }
+    .upload { display:inline-flex; align-items:center; min-height:39px; padding:0 13px; border:0; border-radius:8px; background:#daf1e7; color:#165c43; font-size:12px; font-weight:650; }
+    .upload:hover { background:#c7ead9; }
+    #video-file { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; clip-path:inset(50%); }
+    #video-file:focus-visible + .upload { outline:3px solid #78c5a1; outline-offset:3px; }
+    .file-line { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:11px; color:var(--muted); font-size:11px; }
+    .file-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .video-note { margin:12px 0 0; color:var(--muted); font-size:11px; }
+    .detect-row { display:flex; align-items:center; flex-wrap:wrap; gap:9px; margin-top:12px; }
+    .detect-button { min-height:38px; padding:0 13px; border:1px solid #a9d8c7; border-radius:8px; background:#e2f3ec; color:#155d43; font-size:11px; font-weight:700; }
+    .detect-button:hover { background:#d1ecdf; }
+    .detect-button:disabled { cursor:wait; opacity:.6; }
+    .detect-status { flex:1 1 200px; color:var(--muted); font-size:11px; }
+    .map { position:relative; display:grid; min-height:296px; grid-template:1fr 1.2fr 1fr / 1fr 1.2fr 1fr; overflow:hidden; border-radius:11px; background:#edf3f2; }
+    .road-v { grid-area:1/2/4/3; background:var(--road); }
+    .road-h { grid-area:2/1/3/4; background:var(--road); }
+    .intersection { z-index:1; grid-area:2/2; display:grid; place-items:center; border:1px dashed var(--road-line); color:#f5edcf; font-size:11px; text-align:center; }
+    .queue { z-index:2; align-self:center; justify-self:center; width:96px; padding:8px 9px; border:1px solid #e2e9e8; border-radius:9px; background:white; text-align:center; box-shadow:0 3px 12px #0d202522; }
+    .queue label { display:block; margin-bottom:4px; color:var(--muted); font-size:9px; font-weight:700; letter-spacing:.08em; }
+    .queue input { width:58px; border:0; background:transparent; color:var(--ink); font-size:19px; font-weight:750; text-align:center; font-variant-numeric:tabular-nums; }
+    .queue input:focus { outline:2px solid #72bba0; outline-offset:2px; border-radius:4px; }
+    .queue small { display:block; color:var(--muted); font-size:9px; }
+    .north { grid-area:1/2; } .south { grid-area:3/2; } .west { grid-area:2/1; } .east { grid-area:2/3; }
+    .map-hint { display:flex; justify-content:space-between; gap:10px; margin-top:10px; color:var(--muted); font-size:11px; }
+    .approach-grid { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+    .approach-input { display:flex; align-items:center; justify-content:space-between; gap:8px; min-width:0; padding:10px; border:1px solid var(--line); border-radius:9px; background:#fbfdfc; }
+    .approach-label { min-width:0; color:var(--muted); font-size:11px; }
+    .approach-label b { display:inline-grid; width:23px; height:23px; margin-right:5px; place-items:center; border-radius:7px; background:var(--teal-soft); color:var(--teal); font-size:12px; }
+    .approach-input input { width:54px; border:1px solid var(--line); border-radius:7px; padding:5px 4px; color:var(--ink); background:var(--white); text-align:center; font-weight:700; font-variant-numeric:tabular-nums; }
+    .approach-input input:focus { outline:2px solid #72bba0; outline-offset:1px; }
+    .summary { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:14px; }
+    .summary-box { padding:11px 12px; border-radius:10px; background:#f1f6f5; }
+    .summary-box span { display:block; color:var(--muted); font-size:11px; }
+    .summary-box strong { display:block; margin-top:2px; font-size:19px; font-variant-numeric:tabular-nums; }
+    .signal-panel { margin-top:16px; padding:15px; border-radius:12px; background:var(--dark); color:#f5fbfa; }
+    .signal-top { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .signal-top span { color:#aebfc0; font-size:11px; }
+    .signal-result { display:flex; align-items:center; justify-content:space-between; gap:15px; margin-top:14px; }
+    .signal-name { display:flex; align-items:center; gap:10px; font-size:14px; font-weight:650; }
+    .light { display:flex; gap:5px; padding:5px 7px; border-radius:30px; background:#303c42; }
+    .light i { width:10px; height:10px; border-radius:50%; background:#718087; }
+    .light .on-green { background:#54d38b; box-shadow:0 0 9px #54d38b88; }
+    .signal-rule { color:#70dfa2; font-size:12px; font-weight:700; text-align:right; }
+    .signal-reason { margin:12px 0 0; padding-top:11px; border-top:1px solid #3b4a50; color:#c0cdcd; font-size:11px; }
+    .budget-note { margin:11px 0 0; color:#aebfc0; font-size:10px; }
+    .compare { margin-top:16px; }
+    .simulation { margin-top:16px; }
+    .sim-controls { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+    .sim-controls button { min-height:36px; padding:0 12px; border:1px solid var(--line); border-radius:8px; background:var(--white); color:var(--ink); font-size:11px; font-weight:650; }
+    .sim-controls button.primary { border-color:var(--teal); background:var(--teal); color:white; }
+    .sim-controls button:disabled { cursor:not-allowed; opacity:.5; }
+    .sim-status { flex:1 1 100%; color:var(--muted); font-size:11px; }
+    .sim-stage { overflow:hidden; border-radius:12px; background:#eaf0ef; }
+    .sim-stage svg { display:block; width:100%; height:auto; }
+    .sim-road { fill:none; stroke:#34434b; stroke-width:66; stroke-linecap:butt; }
+    .sim-road.exit-road { opacity:.68; }
+    .sim-arm[hidden], .junction-road-label[hidden], .junction-signal[hidden] { display:none; }
+    .junction-empty { fill:#a8bbc0; font:600 14px system-ui,sans-serif; text-anchor:middle; }
+    .junction-empty[hidden] { display:none; }
+    .sim-road-mark { fill:none; stroke:#aebcbd; stroke-width:2; stroke-dasharray:18 16; }
+    .sim-label-bg { fill:#ffffff; stroke:#dbe5e5; stroke-width:1; }
+    .sim-label { fill:#172831; font:700 13px system-ui,sans-serif; }
+    .sim-queue-pill rect { fill:#0e1a20; stroke:#69d6a1; stroke-width:1; }
+    .sim-queue-pill text { fill:#d9ffeb; font:700 10px system-ui,sans-serif; text-anchor:middle; dominant-baseline:middle; }
+    .sim-car-body { fill:var(--car-color,#f2b84c); stroke:#fff5d8; stroke-width:1.5; transition:fill .25s ease; }
+    .sim-car.bus .sim-car-body { rx:3; }
+    .sim-car.bike .sim-car-body { rx:5; }
+    .sim-car.bus .sim-car-window { fill:#d7f0eb; }
+    .sim-flow-route { fill:none; stroke:#65efad; stroke-width:27; stroke-linecap:round; stroke-linejoin:round; opacity:.2; filter:drop-shadow(0 0 10px #53e4a6); pointer-events:none; }
+    .sim-flow-dash { fill:none; stroke:#b5ffda; stroke-width:2.5; stroke-dasharray:5 13; stroke-linecap:round; opacity:.95; animation:flowDash .7s linear infinite; pointer-events:none; }
+    @keyframes flowDash { to { stroke-dashoffset:-18; } }
+    .sim-signal-green.active { animation:signalPulse 1.3s ease-in-out infinite alternate; }
+    @keyframes signalPulse { to { filter:drop-shadow(0 0 9px #57e395); } }
+    .sim-car { filter:drop-shadow(0 2px 2px #14212766); }
+    .sim-car.bus { --car-color:#49b9aa; }
+    .sim-car.bike { --car-color:#df7580; }
+    .sim-car.car { --car-color:#f2b84c; }
+    .sim-car-window { fill:#d8f0ee; }
+    .sim-car-wheel { fill:#27363b; }
+    .sim-car-light { fill:#fff1a8; }
+    .sim-controls-row { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:12px 0; }
+    .phase-readout { display:flex; flex-wrap:wrap; gap:8px; }
+    .phase-pill { padding:7px 10px; border-radius:8px; background:#f1f5f4; color:var(--muted); font-size:11px; }
+    .phase-pill.active { background:var(--green-soft); color:#176b4b; font-weight:700; }
+    .phase-pill.clearing { background:#fff1d7; color:#825008; font-weight:700; }
+    .sim-legend { display:flex; flex-wrap:wrap; gap:14px; color:var(--muted); font-size:10px; }
+    .legend-dot { display:inline-block; width:8px; height:8px; margin-right:5px; border-radius:50%; background:#4dc887; }
+    .legend-dot.red { background:#de645e; }
+    .sim-note { margin:10px 0 0; color:var(--muted); font-size:10px; }
+    .compare-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .mode { padding:12px; border-radius:10px; background:#f2f6f5; }
+    .mode.adaptive { background:var(--green-soft); }
+    .mode-head { display:flex; justify-content:space-between; gap:8px; color:var(--muted); font-size:11px; }
+    .mode-values { display:flex; justify-content:space-between; gap:8px; margin-top:9px; font-size:12px; }
+    .mode-values strong { color:var(--ink); font-size:15px; font-variant-numeric:tabular-nums; }
+    .mode.adaptive .mode-values strong { color:#176b4b; }
+    .how { display:flex; flex-wrap:wrap; gap:8px; margin-top:16px; }
+    .how span { padding:6px 9px; border-radius:999px; background:#eff4f3; color:var(--muted); font-size:10px; }
+    .disclaimer { margin:16px 2px 0; color:var(--muted); font-size:11px; }
+    .error { margin-top:9px; color:var(--red); font-size:11px; }
+    .panel { border-color:#263740; background:#121d24; }
+    .brand-mark { background:#183d34; color:#8be2b5; }
+    .junction-label { border-color:var(--line); background:#17242b; color:var(--muted); }
+    .approach-input { border-color:#2b3c45; background:#17242b; }
+    .approach-label b { background:#1b3d36; color:#81dcb4; }
+    .approach-input input { border-color:#354851; background:#101a21; color:var(--ink); }
+    .summary-box, .phase-pill, .mode, .how span { background:#19262d; }
+    .phase-pill.active { background:#18382e; color:#7fe2ad; }
+    .phase-pill.clearing { background:#3a2f1d; color:#f2cb79; }
+    .mode.adaptive { background:#17352b; }
+    .mode.adaptive .mode-values strong { color:#7fe2ad; }
+    .signal-panel { background:#0c151a; }
+    .sim-controls button { border-color:#34464f; background:#19262d; color:#e1ebee; }
+    .sim-controls button:hover:not(:disabled) { background:#22343c; }
+    .sim-controls button.primary { border-color:#168c7d; background:#087e75; color:#fff; }
+    .sim-stage { background:#17252c; }
+    #junction-sim > rect:first-child { fill:#17252c; }
+    .sim-road-mark { stroke:#b2c0bf; opacity:.6; }
+    .sim-label-bg { fill:#dce7e5; stroke:#91a5a6; }
+    .detect-button, .upload { border-color:#2e7967; background:#183b33; color:#91e5bd; }
+    .detect-button:hover, .upload:hover { background:#205044; }
+    @media(max-width:900px) { .layout { grid-template-columns:1fr; } .how-to-grid { grid-template-columns:1fr 1fr; } }
+    @media(max-width:560px) { .shell { padding:12px; } .topbar { align-items:flex-start; flex-direction:column; padding:14px; } .top-right { flex-wrap:wrap; } .hero { align-items:flex-start; flex-direction:column; margin-top:21px; } h1 { font-size:24px; } .panel { padding:13px; } .video-frame { min-height:0; } .approach-grid, .how-to-grid { grid-template-columns:1fr; } .compare-grid { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark">TFO</span><span>Traffic Flow Optimiser<small>Adaptive signal demo</small></span></div>
+      <div class="top-right"><span class="status"><i class="status-dot"></i>Prototype · virtual signals only</span><span id="clip-status">Sample still loaded</span></div>
+    </header>
+
+    <div class="hero">
+      <div class="hero-copy"><div class="hero-title-row"><h1>Traffic Flow Optimiser</h1><button id="how-to-use-button" class="help-button" type="button" aria-expanded="false" aria-controls="how-to-use-panel">How to use</button></div><p class="subtitle">Upload junction footage to estimate vehicle counts by direction and preview an adaptive signal plan.</p></div>
+    </div>
+
+    <section id="how-to-use-panel" class="how-to-panel" aria-labelledby="how-to-use-title" hidden>
+      <div class="how-to-head"><h2 id="how-to-use-title">How to use Traffic Flow Optimiser</h2><button id="how-to-close" class="help-close" type="button" aria-label="Close how-to-use instructions">×</button></div>
+      <div class="how-to-grid">
+        <div class="how-to-step"><b>1 · Add footage</b><p>Use the sample junction photo, or choose a photo or video from this device.</p></div>
+        <div class="how-to-step"><b>2 · Check the counts</b><p>Vehicle detection shows the total and estimates the active approaches. Correct counts if needed.</p></div>
+        <div class="how-to-step"><b>3 · See the signal plan</b><p>Detected vehicles are grouped into up to eight compass directions. The largest queue goes first.</p></div>
+        <div class="how-to-step"><b>4 · Play the clearing</b><p>One approach gets green at a time. After its queue clears, the next busiest approach moves.</p></div>
+      </div>
+      <p class="how-to-note">Use Reset cars to replay after the vehicles clear. This is a virtual prototype and does not control real traffic signals.</p>
+    </section>
+
+    <main class="layout">
+      <section class="panel" aria-labelledby="video-title">
+        <div class="panel-title"><h2 id="video-title">Junction footage</h2><span class="eyebrow">Local video preview</span></div>
+        <div id="video-frame" class="video-frame">
+          <img id="sample-image" class="sample-image ready" src="junction-sample-frame.png" alt="Elevated still image of an urban junction with vehicles approaching from several directions">
+          <video id="video" controls playsinline></video>
+          <div id="video-empty" class="video-empty" hidden><strong>Load a junction clip</strong><p>Select a video saved on this device. It stays in your browser for this demo.</p></div>
+          <span id="video-overlay" class="video-overlay visible">Detecting vehicles…</span>
+          <span id="junction-type" class="junction-overlay">Waiting for uploaded footage…</span>
+        </div>
+        <div class="file-line"><span id="file-name" class="file-name">Screenshot 2026-10-25 162615.png</span><span id="video-duration">Still frame</span><input id="video-file" type="file" accept="video/*,image/*" aria-label="Choose junction photo or video"><label class="upload" for="video-file">Load photo or video</label></div>
+        <p id="video-error" class="error" role="alert" hidden></p>
+        <div class="detect-row"><button id="detect-vehicles" class="detect-button" type="button">Detect again</button><button id="centre-button" class="detect-button" type="button">Set junction centre</button><span id="detect-status" class="detect-status" aria-live="polite">Loading browser-based vehicle detector…</span></div>
+        <p class="video-note">Vehicle detection runs in your browser. Your photo or video stays on this device. If the crossing is not near the photo centre, set its centre before checking the direction counts.</p>
+      </section>
+
+      <section class="panel" aria-labelledby="map-title">
+      <div class="panel-title"><h2 id="map-title">Vehicles by approach</h2><span class="eyebrow">Auto-counted from the current frame</span></div>
+        <div id="approach-grid" class="approach-grid" role="group" aria-label="Vehicle queue counts for the north, east, south and west approaches"></div>
+        <div class="map-hint"><span>Counts use 8 compass sectors around an estimated junction centre.</span><span id="data-label">No counts yet</span></div>
+        <div class="summary">
+          <div class="summary-box"><span>Vehicles counted</span><strong id="vehicle-total">0</strong></div>
+          <div class="summary-box"><span>Directions with vehicles</span><strong id="active-directions">0</strong></div>
+        </div>
+        <div class="signal-panel" aria-live="polite">
+          <div class="signal-top"><strong>Recommended next phase</strong><span>Signal lamps shown below</span></div>
+          <div class="signal-result">
+            <div class="signal-name"><span id="phase-name">Waiting for traffic</span></div>
+            <strong id="green-selected" class="signal-rule">Until cleared</strong>
+          </div>
+          <p id="signal-reason" class="signal-reason">The largest detected approach queue gets green first. The next direction is served after it clears.</p>
+          <p class="budget-note">One approach moves at a time in this demo. Each green phase ends when that queue clears.</p>
+        </div>
+      </section>
+    </main>
+
+    <section class="panel simulation" aria-labelledby="sim-title">
+      <div class="panel-title"><div><h2 id="sim-title">Vehicle clearing animation</h2><span class="eyebrow">Four approaches · one queue moves at a time</span></div><div class="sim-controls"><button id="run-cycle" class="primary" type="button">Play clearing animation</button><button id="pause-cycle" type="button" disabled>Pause</button><button id="reset-cycle" type="button">Reset cars</button></div></div>
+      <div class="sim-controls-row"><div id="phase-readout" class="phase-readout"></div><span id="sim-status" class="sim-status" aria-live="polite">Ready · vehicles are waiting</span></div>
+      <div class="sim-stage">
+        <svg id="junction-sim" viewBox="0 0 706 420" role="img" aria-label="Animated junction based on the detected vehicle approaches.">
+          <rect width="706" height="420" fill="#eaf0ef"></rect>
+          <g id="simulation-roads"></g><g id="simulation-flow"></g><g id="simulation-vehicles"></g><g id="simulation-signals"></g><g id="simulation-labels"></g>
+          <text id="junction-empty" class="junction-empty" x="353" y="216">Upload a photo to estimate traffic directions</text>
+        </svg>
+      </div>
+      <div class="sim-controls-row"><div class="sim-legend"><span><i class="legend-dot"></i>Green approach moves</span><span><i class="legend-dot red"></i>Other approaches wait</span></div><span id="cleared-count" class="eyebrow">0 vehicles cleared</span></div>
+      <p class="sim-note">The diagram estimates directions from detected vehicle positions. Empty roads cannot be identified from vehicle detections alone, so review the counts and layout. Up to six spaced vehicle icons are shown per approach; a +N badge shows additional vehicles. Counts and the cleared total stay exact.</p>
+    </section>
+
+    <p class="disclaimer">Virtual signals only. This demo does not control public traffic lights.</p>
+  </div>
+
+  <script>
+
+    (() => {
+      const byId = id => document.getElementById(id);
+      const detectButton = byId("detect-vehicles");
+      const numeric = input => Math.max(0, Math.min(250, Number.parseInt(input.value, 10) || 0));
+      const directions = [
+        { id: "n", label: "North", angle: 0 },
+        { id: "e", label: "East", angle: 90 },
+        { id: "s", label: "South", angle: 180 },
+        { id: "w", label: "West", angle: 270 }
+      ];
+      const inputs = {};
+      let dataSource = "none";
+      let vehicleModelPromise = null;
+      let currentPlan = [];
+      let junctionCenter = { x: 0.5, y: 0.5 };
+      let centerPickArmed = false;
+      let activeApproaches = [];
+      const simulation = { frame: null, lastFrame: null, state: "ready", currentApproach: null, cleared: 0, total: 0, vehicles: Object.fromEntries(directions.map(direction => [direction.id, []])) };
+      const centerPoint = { x: 353, y: 210 };
+      let lastVehicleDetections = [];
+      let lastSourceSize = null;
+      const routes = {};
+
+      function buildApproachInputs() {
+        directions.forEach(direction => {
+          const card = document.createElement("label");
+          card.className = "approach-input";
+          const title = document.createElement("span");
+          title.className = "approach-label";
+          const badge = document.createElement("b");
+          badge.textContent = direction.id.toUpperCase();
+          title.append(badge, document.createTextNode(`${direction.label} approach`));
+          const input = document.createElement("input");
+          input.id = `approach-${direction.id}`;
+          input.type = "number"; input.min = "0"; input.max = "250"; input.value = "0";
+          input.inputMode = "numeric"; input.setAttribute("aria-label", `Vehicles waiting on the ${direction.label} approach`);
+          card.append(title, input);
+          byId("approach-grid").append(card);
+          inputs[direction.id] = input;
+        });
+      }
+      buildApproachInputs();
+
+      function setJunctionCenter(normalizedX, normalizedY) {
+        junctionCenter = { x: Math.max(0.1, Math.min(0.9, normalizedX)), y: Math.max(0.1, Math.min(0.9, normalizedY)) };
+        centerPoint.x = junctionCenter.x * 706;
+        centerPoint.y = junctionCenter.y * 420;
+      }
+
+      function countByDirection(detections, width, height) {
+        const counts = Object.fromEntries(directions.map(direction => [direction.id, 0]));
+        const centerX = junctionCenter.x * width, centerY = junctionCenter.y * height;
+        detections.forEach(item => {
+          const [x, y, boxWidth, boxHeight] = item.bbox;
+          const dx = x + boxWidth / 2 - centerX;
+          const dy = y + boxHeight / 2 - centerY;
+          const angle = (Math.atan2(dx, -dy) * 180 / Math.PI + 360) % 360;
+          const index = Math.round(angle / 90) % directions.length;
+          counts[directions[index].id] += 1;
+        });
+        return counts;
+      }
+
+      function applyDetectedCounts() {
+        if (!lastSourceSize) return;
+        const counts = countByDirection(lastVehicleDetections, lastSourceSize.width, lastSourceSize.height);
+        Object.entries(counts).forEach(([id, count]) => { inputs[id].value = Math.min(250, count); });
+        dataSource = "detected";
+        update();
+        resetSimulation();
+      }
+
+      function edgePoint(angleDegrees, center = centerPoint, inset = 24) {
+        const radians = angleDegrees * Math.PI / 180;
+        const dx = Math.sin(radians), dy = -Math.cos(radians);
+        const horizontal = Math.abs(dx) < 0.0001 ? Infinity : ((dx > 0 ? 706 - inset - center.x : center.x - inset) / Math.abs(dx));
+        const vertical = Math.abs(dy) < 0.0001 ? Infinity : ((dy > 0 ? 420 - inset - center.y : center.y - inset) / Math.abs(dy));
+        const distance = Math.min(horizontal, vertical);
+        return { x: center.x + dx * distance, y: center.y + dy * distance };
+      }
+
+      function offsetLane(points, offset = 12) {
+        return points.map((point, index) => {
+          const before = points[Math.max(0, index - 1)];
+          const after = points[Math.min(points.length - 1, index + 1)];
+          const dx = after.x - before.x, dy = after.y - before.y;
+          const length = Math.hypot(dx, dy) || 1;
+          return { x: point.x - dy / length * offset, y: point.y + dx / length * offset };
+        });
+      }
+
+      function configureJunction(approaches = []) {
+        activeApproaches = directions.map(direction => direction.id).filter(id => approaches.includes(id));
+        const groups = ["simulation-roads", "simulation-flow", "simulation-signals", "simulation-labels"];
+        groups.forEach(id => byId(id).replaceChildren());
+        byId("simulation-vehicles").replaceChildren();
+        Object.keys(routes).forEach(id => delete routes[id]);
+        byId("junction-empty").hidden = activeApproaches.length > 0;
+        byId("junction-type").textContent = activeApproaches.length
+          ? `Traffic seen in ${activeApproaches.length} direction${activeApproaches.length === 1 ? "" : "s"} · layout estimate`
+          : "Upload footage to estimate traffic directions";
+        byId("junction-type").title = "Directions are estimated from detected vehicle locations. A direction with no visible vehicles may still have a road.";
+        byId("junction-sim").setAttribute("aria-label", activeApproaches.length
+          ? `Animated junction with traffic detected from ${activeApproaches.map(id => directions.find(direction => direction.id === id).label).join(", ")} directions.`
+          : "Junction layout is waiting for vehicle detection.");
+
+        activeApproaches.forEach(id => {
+          const direction = directions.find(item => item.id === id);
+          const endpoint = edgePoint(direction.angle);
+          const road = svgNode("path", { class: "sim-road", d: `M ${centerPoint.x} ${centerPoint.y} L ${endpoint.x} ${endpoint.y}` });
+          const marking = svgNode("path", { class: "sim-road-mark", d: `M ${centerPoint.x} ${centerPoint.y} L ${endpoint.x} ${endpoint.y}` });
+          byId("simulation-roads").append(road, marking);
+
+          const opposite = (direction.angle + 180) % 360;
+          const possibleExits = activeApproaches.map(otherId => directions.find(item => item.id === otherId))
+            .filter(other => other.id !== id)
+            .sort((a, b) => Math.abs((((a.angle - opposite) + 540) % 360) - 180) - Math.abs((((b.angle - opposite) + 540) % 360) - 180));
+          const exitAngle = possibleExits.length && Math.abs((((possibleExits[0].angle - opposite) + 540) % 360) - 180) < 70
+            ? possibleExits[0].angle : opposite;
+          const exitPoint = edgePoint(exitAngle);
+          const exitId = directions.find(item => item.angle === exitAngle)?.id;
+          if (exitId && !activeApproaches.includes(exitId)) {
+            byId("simulation-roads").append(svgNode("path", {
+              class: "sim-road exit-road",
+              d: `M ${centerPoint.x} ${centerPoint.y} L ${exitPoint.x} ${exitPoint.y}`
+            }));
+          }
+          routes[id] = { points: offsetLane([endpoint, centerPoint, exitPoint]), endpoint, exitPoint };
+          simulation.vehicles[id] = [];
+
+          const label = svgNode("text", { class: "sim-label", x: endpoint.x, y: endpoint.y, "text-anchor": endpoint.x < centerPoint.x - 70 ? "start" : endpoint.x > centerPoint.x + 70 ? "end" : "middle", "dominant-baseline": endpoint.y < centerPoint.y ? "auto" : "hanging" });
+          label.textContent = direction.label;
+          byId("simulation-labels").append(label);
+
+          const signalPoint = { x: centerPoint.x + (endpoint.x - centerPoint.x) * 0.72, y: centerPoint.y + (endpoint.y - centerPoint.y) * 0.72 };
+          const signal = svgNode("g", { id: `signal-${id}`, class: "junction-signal", transform: `translate(${signalPoint.x - 11} ${signalPoint.y - 25})` });
+          signal.appendChild(svgNode("rect", { class: "sim-signal-housing", width: 22, height: 50, rx: 6 }));
+          ["red", "amber", "green"].forEach((color, index) => signal.appendChild(svgNode("circle", { id: `lamp-${id}-${color}`, class: `sim-signal-${color}${color === "red" ? " active" : ""}`, cx: 11, cy: 8 + index * 10, r: 3.5 })));
+          const letter = svgNode("text", { class: "sim-signal-letter", x: 11, y: 44 }); letter.textContent = id.toUpperCase(); signal.append(letter);
+          byId("simulation-signals").append(signal);
+
+          const holder = svgNode("g", { id: `vehicles-${id}` });
+          const approachLength = Math.hypot(centerPoint.x - endpoint.x, centerPoint.y - endpoint.y) || 1;
+          const badgeX = endpoint.x + (centerPoint.x - endpoint.x) * 0.14 - (centerPoint.y - endpoint.y) / approachLength * 38;
+          const badgeY = endpoint.y + (centerPoint.y - endpoint.y) * 0.14 + (centerPoint.x - endpoint.x) / approachLength * 38;
+          const moreBadge = svgNode("g", { class: "sim-queue-pill", transform: `translate(${badgeX} ${badgeY})` });
+          moreBadge.appendChild(svgNode("rect", { x: -29, y: -10, width: 58, height: 20, rx: 8 }));
+          moreBadge.appendChild(svgNode("text", { class: "queue-more-text", x: 0, y: 1 }));
+          holder.appendChild(moreBadge);
+          byId("simulation-vehicles").append(holder);
+        });
+        renderPhaseReadout();
+        setSignals("red");
+      }
+
+      function queueCounts() { return Object.fromEntries(directions.map(direction => [direction.id, numeric(inputs[direction.id])])); }
+
+      function renderPhaseReadout() {
+        const holder = byId("phase-readout");
+        holder.replaceChildren();
+        currentPlan.forEach(id => {
+          const pill = document.createElement("span"); pill.id = `phase-${id}`; pill.className = "phase-pill";
+          pill.textContent = directions.find(direction => direction.id === id).label;
+          holder.append(pill);
+        });
+      }
+
+      function update() {
+        const counts = queueCounts();
+        const total = Object.values(counts).reduce((sum, count) => sum + count, 0);
+        currentPlan = Object.keys(counts).filter(id => counts[id] > 0).sort((a, b) => counts[b] - counts[a]);
+        const active = Object.keys(counts).filter(id => counts[id] > 0);
+        byId("vehicle-total").textContent = total;
+        byId("active-directions").textContent = active.length;
+        byId("green-selected").textContent = "Until cleared";
+        byId("data-label").textContent = dataSource === "detected" ? "Photo detected" : dataSource === "manual" ? "Manual counts" : "No counts yet";
+        byId("phase-name").textContent = total ? `${directions.find(direction => direction.id === currentPlan[0]).label} approach green` : "Waiting for traffic";
+        configureJunction(active);
+        if (!simulation.currentApproach) setSignals(total ? "green" : "red", currentPlan[0]);
+        if (!total) byId("signal-reason").textContent = "No vehicles entered. Upload footage or enter counts to create the signal plan.";
+        else byId("signal-reason").textContent = `${directions.find(direction => direction.id === currentPlan[0]).label} has the largest estimated queue (${counts[currentPlan[0]]} vehicle${counts[currentPlan[0]] === 1 ? "" : "s"}). It goes first; the next busiest direction follows after it clears.`;
+      }
+
+      function setSignals(mode, selectedId) {
+        directions.forEach(({ id }) => {
+          if (!activeApproaches.includes(id)) return;
+          const color = mode === "green" && id === selectedId ? "green" : mode === "amber" && id === selectedId ? "amber" : "red";
+          ["red", "amber", "green"].forEach(light => {
+            const lamp = byId(`lamp-${id}-${light}`);
+            if (lamp) lamp.classList.toggle("active", light === color);
+          });
+        });
+      }
+
+      function svgNode(name, attrs = {}) {
+        const node = document.createElementNS("http://www.w3.org/2000/svg", name);
+        Object.entries(attrs).forEach(([key, value]) => node.setAttribute(key, value));
+        return node;
+      }
+
+      function createVehicle(index = 0) {
+        const vehicleType = index % 7 === 5 ? "bus" : index % 4 === 2 ? "bike" : "car";
+        const group = svgNode("g", { class: `sim-car ${vehicleType}`, "aria-hidden": "true", style: `--car-color:${["#f2b84c", "#62a9d5", "#e97979", "#8dce8b", "#b18be0", "#48b8aa", "#ef9c52"][index % 7]}` });
+        const dims = vehicleType === "bus" ? { w: 24, h: 14, rx: 3 } : vehicleType === "bike" ? { w: 13, h: 8, rx: 4 } : { w: 18, h: 12, rx: 4 };
+        if (vehicleType !== "bike") [[-dims.w/2+2,-dims.h/2-1],[dims.w/2-6,-dims.h/2-1],[-dims.w/2+2,dims.h/2-1],[dims.w/2-6,dims.h/2-1]].forEach(([x,y]) => group.appendChild(svgNode("rect", { class: "sim-car-wheel", x, y, width: 4, height: 2, rx: 1 })));
+        group.appendChild(svgNode("rect", { class: "sim-car-body", x: -dims.w/2, y: -dims.h/2, width: dims.w, height: dims.h, rx: dims.rx }));
+        if (vehicleType === "bike") {
+          group.appendChild(svgNode("circle", { class: "sim-car-wheel", cx: -5, cy: 0, r: 2 }));
+          group.appendChild(svgNode("circle", { class: "sim-car-wheel", cx: 5, cy: 0, r: 2 }));
+          group.appendChild(svgNode("rect", { class: "sim-car-window", x: -1, y: -2.5, width: 4, height: 5, rx: 2 }));
+        } else {
+          const windowX = vehicleType === "bus" ? -8 : -5;
+          const windowW = vehicleType === "bus" ? 6 : 5;
+          group.appendChild(svgNode("rect", { class: "sim-car-window", x: windowX, y: -dims.h/2+2, width: windowW, height: dims.h-4, rx: 2 }));
+          group.appendChild(svgNode("rect", { class: "sim-car-window", x: vehicleType === "bus" ? 0 : 2, y: -dims.h/2+2, width: vehicleType === "bus" ? 6 : 4, height: dims.h-4, rx: 1.5 }));
+          group.appendChild(svgNode("rect", { class: "sim-car-window", x: 8, y: -dims.h/2+2, width: 4, height: dims.h-4, rx: 1.5 }));
+        }
+        group.appendChild(svgNode("circle", { class: "sim-car-light", cx: dims.w/2-1.5, cy: -dims.h/2+2, r: 1 }));
+        group.appendChild(svgNode("circle", { class: "sim-car-light", cx: dims.w/2-1.5, cy: dims.h/2-2, r: 1 }));
+        return group;
+      }
+
+      function placeVehicle(routeId, car) {
+        const route = routes[routeId];
+        const points = route.points;
+        const lengths = points.slice(1).map((point, index) => Math.hypot(point.x - points[index].x, point.y - points[index].y));
+        const totalLength = lengths.reduce((sum, length) => sum + length, 0) || 1;
+        let distance = Math.max(0, Math.min(1, car.t)) * totalLength;
+        let segment = 0;
+        while (segment < lengths.length - 1 && distance > lengths[segment]) distance -= lengths[segment++];
+        const start = points[segment], end = points[segment + 1] || points[segment];
+        const ratio = lengths[segment] ? distance / lengths[segment] : 0;
+        const x = start.x + (end.x - start.x) * ratio;
+        const y = start.y + (end.y - start.y) * ratio;
+        const angle = Math.atan2(end.y - start.y, end.x - start.x) * 180 / Math.PI;
+        car.node.setAttribute("transform", `translate(${x} ${y}) rotate(${angle}) scale(${car.scale})`);
+      }
+
+      function loadVehicleModel() { return Promise.resolve(null); }
+
+      function getDetectionTiles(width, height) {
+        const columns = Math.min(4, Math.max(1, Math.ceil(width / 300)));
+        const rows = Math.min(4, Math.max(1, Math.ceil(height / 300)));
+        const tileWidth = Math.min(width, Math.ceil(width / (columns - 0.22 * (columns - 1))));
+        const tileHeight = Math.min(height, Math.ceil(height / (rows - 0.22 * (rows - 1))));
+        const tiles = [];
+        for (let row = 0; row < rows; row++) for (let column = 0; column < columns; column++) {
+          const x = columns === 1 ? 0 : Math.round(column * (width - tileWidth) / (columns - 1));
+          const y = rows === 1 ? 0 : Math.round(row * (height - tileHeight) / (rows - 1));
+          tiles.push({ x, y, width: tileWidth, height: tileHeight });
+        }
+        return tiles;
+      }
+
+      function boxIoU(first, second) {
+        const [ax, ay, aw, ah] = first.bbox;
+        const [bx, by, bw, bh] = second.bbox;
+        const left = Math.max(ax, bx), top = Math.max(ay, by);
+        const right = Math.min(ax + aw, bx + bw), bottom = Math.min(ay + ah, by + bh);
+        const intersection = Math.max(0, right - left) * Math.max(0, bottom - top);
+        const union = aw * ah + bw * bh - intersection;
+        return union > 0 ? intersection / union : 0;
+      }
+
+      function removeDuplicateDetections(detections) {
+        const kept = [];
+        detections.sort((first, second) => second.score - first.score).forEach(candidate => {
+          const duplicate = kept.some(existing => {
+            const [ax, ay, aw, ah] = existing.bbox, [bx, by, bw, bh] = candidate.bbox;
+            const intersection = Math.max(0, Math.min(ax + aw, bx + bw) - Math.max(ax, bx)) * Math.max(0, Math.min(ay + ah, by + bh) - Math.max(ay, by));
+            return boxIoU(existing, candidate) >= 0.3 || intersection / Math.max(1, Math.min(aw * ah, bw * bh)) >= 0.68;
+          });
+          if (!duplicate) kept.push(candidate);
+        });
+        return kept;
+      }
+
+      async function detectVehiclesInTiles(source) {
+        const canvas = document.createElement("canvas");
+        canvas.width = source.width; canvas.height = source.height;
+        canvas.getContext("2d").drawImage(source.element, 0, 0, source.width, source.height);
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", 0.92));
+        if (!blob) throw new Error("Could not prepare the image for Python detection.");
+        const data = new FormData(); data.append("image", blob, "frame.jpg");
+        byId("detect-status").textContent = "Python YOLO is scanning the image…";
+        const response = await fetch("/api/detect", { method: "POST", body: data });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Python vehicle detection failed.");
+        return result.detections;
+      }
+
+      function drawInitialVehicles() {
+        const counts = queueCounts();
+        simulation.total = Object.values(counts).reduce((sum, count) => sum + count, 0);
+        directions.forEach(({ id }) => {
+          const holder = byId(`vehicles-${id}`);
+          if (!holder || !routes[id]) { simulation.vehicles[id] = []; return; }
+          holder.querySelectorAll(".sim-car").forEach(node => node.remove());
+          const shown = Math.min(6, counts[id]);
+          simulation.vehicles[id] = [];
+          const spacing = shown > 1 ? Math.min(0.07, 0.42 / (shown - 1)) : 0;
+          const scale = 0.78;
+          const weight = shown ? Math.floor(counts[id] / shown) : 0;
+          const extra = shown ? counts[id] % shown : 0;
+          for (let i = 0; i < shown; i++) {
+            const car = { node: createVehicle(i), t: 0.42 - i * spacing, scale, weight: weight + (i < extra ? 1 : 0) };
+            holder.appendChild(car.node);
+            simulation.vehicles[id].push(car);
+            placeVehicle(id, car);
+          }
+          updateQueueBadge(id);
+        });
+      }
+
+      function updateQueueBadge(id) {
+        const holder = byId(`vehicles-${id}`);
+        const text = holder?.querySelector(".queue-more-text");
+        if (!text) return;
+        const vehicles = simulation.vehicles[id] || [];
+        const remaining = vehicles.reduce((sum, car) => sum + (car.weight || 1), 0);
+        const extra = Math.max(0, remaining - vehicles.length);
+        text.textContent = extra ? `+${extra} more` : "";
+        text.parentElement.previousElementSibling?.setAttribute("visibility", extra ? "visible" : "hidden");
+      }
+
+      function approachHasCars(id) {
+        return Boolean(simulation.vehicles[id]?.length);
+      }
+
+      function setActiveApproach(id) {
+        simulation.currentApproach = id;
+        setSignals("green", id);
+        byId("simulation-flow").replaceChildren();
+        const route = routes[id];
+        if (route) {
+          const d = `M ${route.endpoint.x} ${route.endpoint.y} L ${centerPoint.x} ${centerPoint.y} L ${route.exitPoint.x} ${route.exitPoint.y}`;
+          byId("simulation-flow").append(
+            svgNode("path", { class: "sim-flow-route", d }),
+            svgNode("path", { class: "sim-flow-dash", d })
+          );
+        }
+        directions.forEach(({ id: directionId }) => byId(`phase-${directionId}`)?.classList.toggle("active", id === directionId));
+        const name = directions.find(direction => direction.id === id)?.label || "Approach";
+        byId("sim-status").textContent = `${name} approach green · ${simulation.vehicles[id].length} queued vehicle${simulation.vehicles[id].length === 1 ? "" : "s"} moving`;
+      }
+
+      function resetSimulation() {
+        if (simulation.frame) cancelAnimationFrame(simulation.frame);
+        simulation.frame = null;
+        simulation.lastFrame = null;
+        simulation.state = "ready";
+        simulation.currentApproach = null;
+        simulation.cleared = 0;
+        drawInitialVehicles();
+        Object.values(inputs).forEach(input => { input.disabled = false; });
+        detectButton.disabled = false;
+        byId("centre-button").disabled = false;
+        byId("run-cycle").disabled = false;
+        byId("run-cycle").textContent = "Play clearing animation";
+        byId("pause-cycle").disabled = true;
+        byId("pause-cycle").textContent = "Pause";
+        directions.forEach(({ id }) => byId(`phase-${id}`)?.classList.remove("active", "clearing"));
+        byId("sim-status").textContent = "Ready · queues form from the detected vehicle counts";
+        byId("cleared-count").textContent = `0 of ${simulation.total} vehicles cleared`;
+        const total = Object.values(queueCounts()).reduce((sum, count) => sum + count, 0);
+        setSignals(total ? "green" : "red", currentPlan[0]);
+      }
+
+      function finishSimulation() {
+        if (simulation.frame) cancelAnimationFrame(simulation.frame);
+        simulation.frame = null;
+        simulation.lastFrame = null;
+        simulation.state = "complete";
+        Object.values(inputs).forEach(input => { input.disabled = false; });
+        detectButton.disabled = false;
+        byId("run-cycle").disabled = false;
+        byId("run-cycle").textContent = "Play again";
+        byId("pause-cycle").disabled = true;
+        byId("pause-cycle").textContent = "Pause";
+        directions.forEach(({ id }) => byId(`phase-${id}`)?.classList.remove("active", "clearing"));
+        byId("sim-status").textContent = "All queues cleared · every counted vehicle passed through";
+        byId("cleared-count").textContent = `${simulation.cleared} of ${simulation.total} vehicles cleared`;
+        setSignals("complete");
+        byId("simulation-flow").replaceChildren();
+      }
+
+      function tickSimulation(now) {
+        if (simulation.state !== "running") return;
+        if (simulation.lastFrame === null) simulation.lastFrame = now;
+        const delta = Math.min((now - simulation.lastFrame) / 1000, 0.05);
+        simulation.lastFrame = now;
+        const id = simulation.currentApproach;
+        const speed = 0.26 * delta;
+        let newlyCleared = 0;
+        if (id) {
+          simulation.vehicles[id] = simulation.vehicles[id].filter(car => {
+            car.t += speed;
+            if (car.t >= 1) {
+              car.node.remove();
+              simulation.cleared += car.weight || 1;
+              newlyCleared += car.weight || 1;
+              return false;
+            }
+            placeVehicle(id, car);
+            return true;
+          });
+        }
+        if (id) updateQueueBadge(id);
+        if (newlyCleared) byId("cleared-count").textContent = `${simulation.cleared} of ${simulation.total} vehicles cleared`;
+        if (!approachHasCars(id)) {
+          const remaining = currentPlan.find(nextId => approachHasCars(nextId));
+          if (remaining) setActiveApproach(remaining);
+          else finishSimulation();
+          if (simulation.state !== "running") return;
+        }
+        simulation.frame = requestAnimationFrame(tickSimulation);
+      }
+
+      function startAnimation() {
+        simulation.state = "running";
+        Object.values(inputs).forEach(input => { input.disabled = true; });
+        detectButton.disabled = true;
+        byId("run-cycle").disabled = true;
+        byId("pause-cycle").disabled = false;
+        byId("pause-cycle").textContent = "Pause";
+        simulation.lastFrame = null;
+        simulation.frame = requestAnimationFrame(tickSimulation);
+      }
+
+      function runSimulation() {
+        if (simulation.state === "complete") resetSimulation();
+        if (simulation.state !== "ready") return;
+        const first = currentPlan.find(id => approachHasCars(id));
+        if (first) setActiveApproach(first);
+        else return finishSimulation();
+        startAnimation();
+      }
+
+      function togglePause() {
+        if (simulation.state === "running") {
+          if (simulation.frame) cancelAnimationFrame(simulation.frame);
+          simulation.frame = null;
+          simulation.lastFrame = null;
+          simulation.state = "paused";
+          byId("pause-cycle").textContent = "Resume";
+          byId("sim-status").textContent = "Paused · press Resume to continue this cycle";
+        } else if (simulation.state === "paused") {
+          startAnimation();
+        }
+      }
+
+      byId("run-cycle").addEventListener("click", runSimulation);
+      byId("pause-cycle").addEventListener("click", togglePause);
+      byId("reset-cycle").addEventListener("click", resetSimulation);
+
+      const howToButton = byId("how-to-use-button"), howToPanel = byId("how-to-use-panel");
+      function showHowTo(open) {
+        howToPanel.hidden = !open;
+        howToButton.setAttribute("aria-expanded", String(open));
+        howToButton.textContent = open ? "Hide steps" : "How to use";
+      }
+      howToButton.addEventListener("click", () => showHowTo(howToPanel.hidden));
+      byId("how-to-close").addEventListener("click", () => { showHowTo(false); howToButton.focus(); });
+
+      Object.values(inputs).forEach(input => input.addEventListener("input", () => { dataSource = "manual"; update(); if (simulation.state === "ready" || simulation.state === "complete") resetSimulation(); }));
+
+      const picker = byId("video-file"), video = byId("video"), sampleImage = byId("sample-image"), empty = byId("video-empty"), videoFrame = byId("video-frame");
+      let activeUrl = null;
+      byId("centre-button").addEventListener("click", () => {
+        centerPickArmed = !centerPickArmed;
+        byId("centre-button").textContent = centerPickArmed ? "Click the crossing centre" : "Set junction centre";
+        byId("detect-status").textContent = centerPickArmed ? "Click the middle of the intersection in the photo. Counts will be reassigned around it." : "Centre selection cancelled.";
+      });
+      videoFrame.addEventListener("click", event => {
+        if (!centerPickArmed || (event.target !== sampleImage && event.target !== video)) return;
+        const rect = event.target.getBoundingClientRect();
+        setJunctionCenter((event.clientX - rect.left) / rect.width, (event.clientY - rect.top) / rect.height);
+        centerPickArmed = false;
+        byId("centre-button").textContent = "Set junction centre";
+        if (lastSourceSize) {
+          applyDetectedCounts();
+          byId("detect-status").textContent = "Centre updated · directional counts reassigned. Check the counts before using the signal plan.";
+        } else {
+          byId("detect-status").textContent = "Centre saved · upload footage to count vehicles.";
+        }
+      });
+      picker.addEventListener("change", () => {
+        const file = picker.files && picker.files[0];
+        byId("video-error").hidden = true;
+        if (!file) return;
+        const isVideo = file.type.startsWith("video/");
+        const isImage = file.type.startsWith("image/");
+        if (!isVideo && !isImage) {
+          byId("video-error").textContent = "Please choose an image or video file.";
+          byId("video-error").hidden = false;
+          picker.value = "";
+          return;
+        }
+        if (activeUrl) URL.revokeObjectURL(activeUrl);
+        photoVersion += 1;
+        lastVehicleDetections = [];
+        lastSourceSize = null;
+        setJunctionCenter(0.5, 0.5);
+        centerPickArmed = false;
+        byId("centre-button").textContent = "Set junction centre";
+        activeUrl = URL.createObjectURL(file);
+        Object.values(inputs).forEach(input => { input.value = 0; });
+        dataSource = "none";
+        configureJunction([]);
+        update();
+        resetSimulation();
+        byId("file-name").textContent = file.name;
+        byId("video-overlay").classList.add("visible");
+        empty.hidden = true;
+        if (isVideo) {
+          sampleImage.classList.remove("ready");
+          video.src = activeUrl;
+          video.classList.add("ready");
+          byId("clip-status").textContent = "Local video loaded";
+          byId("video-overlay").textContent = "Video clip · automatic frame detection";
+          byId("video-duration").textContent = "Video clip";
+          byId("detect-status").textContent = "Video loaded · detecting vehicles in its first frame…";
+          video.onloadedmetadata = () => {
+            if (video.videoWidth && video.videoHeight) videoFrame.style.aspectRatio = `${video.videoWidth} / ${video.videoHeight}`;
+          };
+          video.onloadeddata = () => {
+            if (video.videoWidth && video.videoHeight) videoFrame.style.aspectRatio = `${video.videoWidth} / ${video.videoHeight}`;
+            queueAutoDetection("Video frame ready");
+          };
+        } else {
+          video.pause();
+          video.removeAttribute("src");
+          video.load();
+          video.classList.remove("ready");
+          sampleImage.onload = () => {
+            if (sampleImage.naturalWidth && sampleImage.naturalHeight) videoFrame.style.aspectRatio = `${sampleImage.naturalWidth} / ${sampleImage.naturalHeight}`;
+            byId("detect-status").textContent = "Image uploaded · detecting vehicles automatically…";
+            detectAndAnimate();
+          };
+          sampleImage.onerror = () => {
+            byId("detect-status").textContent = "This image could not be opened. Choose another photo.";
+          };
+          sampleImage.src = activeUrl;
+          sampleImage.classList.add("ready");
+          byId("clip-status").textContent = "Still image loaded";
+          byId("video-overlay").textContent = "Still photo · vehicle counting";
+          byId("video-duration").textContent = "Still photo";
+          byId("detect-status").textContent = "Photo loaded · detecting vehicles automatically…";
+        }
+      });
+      let photoVersion = 0;
+      let detectionInProgress = false;
+      let pendingDetection = false;
+
+      function getPhotoSource() {
+        if (video.classList.contains("ready") && video.readyState >= 2 && video.videoWidth) {
+          return { element: video, width: video.videoWidth, height: video.videoHeight };
+        }
+        if (location.protocol === "file:" && !activeUrl) return null;
+        if (sampleImage.classList.contains("ready") && sampleImage.complete && sampleImage.naturalWidth) {
+          return { element: sampleImage, width: sampleImage.naturalWidth, height: sampleImage.naturalHeight };
+        }
+        return null;
+      }
+
+      async function detectAndAnimate() {
+        if (detectionInProgress) {
+          pendingDetection = true;
+          return;
+        }
+        if (simulation.state === "running" || simulation.state === "paused") {
+          if (video.classList.contains("ready")) resetSimulation();
+          else return;
+        }
+        if (!getPhotoSource()) {
+          byId("detect-status").textContent = location.protocol === "file:" && !activeUrl
+            ? "Choose your photo with Load photo or video. The built-in sample cannot be scanned from a file:// page."
+            : "Load a photo first, or pause a video on a clear frame.";
+          byId("video-overlay").textContent = "Upload a photo to start detection";
+          return;
+        }
+        detectionInProgress = true;
+        const version = photoVersion;
+        detectButton.disabled = true;
+        byId("run-cycle").disabled = true;
+        byId("detect-status").textContent = "Loading the browser vehicle detector…";
+        byId("junction-type").textContent = "Detecting vehicles and directions…";
+        try {
+          const source = getPhotoSource();
+          if (!source) throw new Error("photo or video frame is not ready");
+          byId("detect-status").textContent = "Loading the AI model in this browser…";
+          if (version !== photoVersion) return;
+          const vehicles = await detectVehiclesInTiles(source);
+          if (version !== photoVersion) return;
+          lastVehicleDetections = vehicles;
+          lastSourceSize = { width: source.width, height: source.height };
+          applyDetectedCounts();
+          const total = vehicles.length;
+          byId("video-overlay").textContent = `Detected: ${total} vehicles`;
+          byId("detect-status").textContent = total ? `${total} vehicles estimated · grouped into compass directions. Check the counts and adjust the junction centre if needed.` : "No vehicles detected. Try a closer photo or enter the approach counts manually.";
+          if (total) runSimulation();
+        } catch (error) {
+          const message = error && error.message ? error.message : "model unavailable";
+          byId("junction-type").textContent = "Detection failed · see status below";
+          byId("video-overlay").textContent = "Detection failed";
+          byId("video-overlay").classList.add("visible");
+          byId("detect-status").textContent = `Browser vehicle detection failed: ${message}`;
+        } finally {
+          detectionInProgress = false;
+          if (simulation.state !== "running") {
+            detectButton.disabled = false;
+            byId("run-cycle").disabled = false;
+          }
+          if (pendingDetection) {
+            pendingDetection = false;
+            queueAutoDetection("Updated frame ready");
+          }
+        }
+      }
+
+      detectButton.addEventListener("click", detectAndAnimate);
+      let autoDetectionQueued = false;
+      function queueAutoDetection(reason) {
+        if (autoDetectionQueued) return;
+        autoDetectionQueued = true;
+        byId("detect-status").textContent = `${reason} · starting automatic vehicle detection…`;
+        requestAnimationFrame(() => {
+          autoDetectionQueued = false;
+          detectAndAnimate();
+        });
+      }
+      video.addEventListener("seeked", () => {
+        if (video.classList.contains("ready") && video.paused && video.readyState >= 2) queueAutoDetection("Video frame changed");
+      });
+      video.addEventListener("pause", () => {
+        if (video.classList.contains("ready") && video.readyState >= 2) queueAutoDetection("Video paused");
+      });
+      window.addEventListener("beforeunload", () => { if (activeUrl) URL.revokeObjectURL(activeUrl); });
+      configureJunction([]);
+      update();
+      resetSimulation();
+      const handleSamplePhotoReady = () => {
+        if (location.protocol === "file:") {
+          byId("video-overlay").textContent = "Upload a photo to start detection";
+          byId("detect-status").textContent = "Choose your photo with Load photo or video. The built-in sample is preview-only when opened as a file.";
+        } else {
+          queueAutoDetection("Sample photo ready");
+        }
+      };
+      if (sampleImage.complete && sampleImage.naturalWidth) handleSamplePhotoReady();
+      else sampleImage.addEventListener("load", handleSamplePhotoReady, { once: true });
+    })();
+  
+
+  </script>
